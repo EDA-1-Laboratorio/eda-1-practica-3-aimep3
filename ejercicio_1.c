@@ -1,83 +1,108 @@
-#include <stdio.h>
-#include <stdlib.h>     
-#include <time.h>  
+import random
+from collections import Counter #para contar las cartas
 
-struct naipe {
-    int puntos;         
-    char palo;          
-};
+class Naipe: #definimos nuestras cartas
+    def __init__(self, puntos, palo):
+        self.puntos = puntos
+        self.palo = palo
 
-//definimos ciertos valores
-void imprimirCarta(struct naipe carta) {
-    if (carta.puntos == 1) printf("A");             //Si es 1, imprime A
-    else if (carta.puntos == 11) printf("J");       //Si es 11, imprime J
-    else if (carta.puntos == 12) printf("Q");       //Si es 12, imprime Q
-    else if (carta.puntos == 13) printf("K");       //Si es 13, imprime K
-    else printf("%d", carta.puntos);                //Si es del 2 al 10, imprime el número normal
+    def __str__(self): #definimos valores especiales
+        nombres = {1: 'A', 11: 'J', 12: 'Q', 13: 'K'}
+        nombre = nombres.get(self.puntos, str(self.puntos))
+        return f"[{nombre}{self.palo}]"
+
+def evaluar_mano(cartas_jugador, cartas_centro):
+    todas_las_cartas = cartas_jugador + cartas_centro
     
-    printf("%c", carta.palo);                       //Al final, imprime la letra del palo
-}
-int main() {
-    srand(time(NULL));  //funcion para crear los números random
+    #revisamos solo los números y no el palo
+    valores = [carta.puntos for carta in todas_las_cartas]
     
-    struct naipe baraja[52];                 //arreglo de 52 cartas
-    char palos[4] = {'C', 'T', 'D', 'E'};    //los 4 palos posibles
-    int indice = 0;                          
+    #cuenta cuántas veces se repite cada número
+    conteo = Counter(valores)
+    
+    # Ordenamos de mayor a menor frecuencia (para ver primero las tercias o pares)
+    frecuencias = list(conteo.values())
+    frecuencias.sort(reverse=True)
+    
+    #evaluamos qué combinación tiene
+    if 4 in frecuencias:
+        return 7, "Póker (4 iguales)"
+    elif 3 in frecuencias and 2 in frecuencias:
+        return 6, "Full House (Tercia y un Par)"
+    elif 3 in frecuencias:
+        return 4, "Tercia (3 iguales)"
+    elif frecuencias.count(2) >= 2:
+        return 3, "Doble Par"
+    elif 2 in frecuencias:
+        return 2, "Un Par"
+    else:
+        carta_mas_alta = max(valores)
+        if 1 in valores: carta_mas_alta = 14 
+        return 1, f"Carta Alta"
 
-    //Usamos dos ciclos: uno para los 4 palos y otro para los 13 números posibles
-    for (int i = 0; i < 4; i++) {
-        for (int p = 1; p <= 13; p++) {
-            baraja[indice].puntos = p;       //asignamos el número a la carta
-            baraja[indice].palo = palos[i];  //asignamos el palo
-            indice++;                        //ahora a la siguiente carta
-        }
-    }
+def preguntar_jugador(numero_jugador):
+    respuesta = input(f"Jugador {numero_jugador}, ¿quieres seguir jugando? (si/no): ").lower()
+    return respuesta == 'si' 
 
-//"revolvemos" la baraja
-    for (int i = 51; i > 0; i--) {
-        int j = rand() % (i + 1);            // Escogemos una posición al azar
-        struct naipe temporal = baraja[i];   // Guardamos la carta actual temporalmente
-        baraja[i] = baraja[j];               // Movemos la carta al azar a la posición actual
-        baraja[j] = temporal;                // Ponemos la carta guardada en la posición al azar
-    }
+print("Bienvenido a la ludopatia\n")
 
-    //creamos las manos
-    struct naipe player1[2];                 // Arreglo de 2 cartas para el jugador 1
-    struct naipe player2[2];                 // Arreglo de 2 cartas para el jugador 2
-    struct naipe river[3];                   // Arreglo de 3 cartas para la casa
+palos = ['♥', '♣', '♦', '♠'] 
+baraja = [Naipe(p, palo) for palo in palos for p in range(1, 14)]
+random.shuffle(baraja)
 
-    //vamos a ir "sacando" cartas una por una
-    int carta_actual = 0;
+#repartimos las cartas iniciales
+player1 = [baraja.pop(), baraja.pop()]
+player2 = [baraja.pop(), baraja.pop()]
+centro = [baraja.pop(), baraja.pop(), baraja.pop()]
 
-    player1[0] = baraja[carta_actual++];     // Damos carta 1 al Jugador 1 y avanzamos
-    player1[1] = baraja[carta_actual++];     // Damos carta 2 al Jugador 1 y avanzamos
+print("RONDA 1")
+print(f"Mano Jugador 1: {player1[0]} {player1[1]}")
+print(f"Mano Jugador 2: {player2[0]} {player2[1]}")
+print(f"Cartas en el centro: {centro[0]} {centro[1]} {centro[2]}\n")
 
-    player2[0] = baraja[carta_actual++];     // Damos carta 1 al Jugador 2 y avanzamos
-    player2[1] = baraja[carta_actual++];     // Damos carta 2 al Jugador 2 y avanzamos
+if not preguntar_jugador(1):
+    print("\nEl Jugador 1 se rinde y el Jugador 2 GANA automáticamente")
+    exit() # Termina el programa
+if not preguntar_jugador(2):
+    print("\nl Jugador 2 se rinde y el Jugador 1 GANA automáticamente")
+    exit()
 
-    river[0] = baraja[carta_actual++];       // Ponemos carta 1 en el centro y avanzamos
-    river[1] = baraja[carta_actual++];       // Ponemos carta 2 en el centro y avanzamos
-    river[2] = baraja[carta_actual++];       // Ponemos carta 3 en el centro y avanzamos
+#comenzamos la segunda ronda
+centro.append(baraja.pop()) #agregamos la 4ta carta al centro
+print("\nRONDA 2")
+print(f"Cartas en el centro: {centro[0]} {centro[1]} {centro[2]} {centro[3]}\n")
 
-    printf("--- MANO DEL JUGADOR 1 ---\n[");
-    imprimirCarta(player1[0]);              
-    printf("] [");
-    imprimirCarta(player1[1]);              
-    printf("]\n\n");
+if not preguntar_jugador(1):
+    print("\nEl Jugador 1 se rinde y el Jugador 2 GANA automáticamente")
+    exit()
+if not preguntar_jugador(2):
+    print("\nEl Jugador 2 se rinde y el Jugador 1 GANA automáticamente")
+    exit()
 
-    printf("--- MANO DEL JUGADOR 2 ---\n[");
-    imprimirCarta(player2[0]);
-    printf("] [");
-    imprimirCarta(player2[1]);
-    printf("]\n\n");
+#comenzamos la tercera ronda
+centro.append(baraja.pop()) #agregamos la 5ta carta al centro
+print("\nRONDA 3")
+print(f"Cartas en el centro finales: {centro[0]} {centro[1]} {centro[2]} {centro[3]} {centro[4]}\n")
 
-    printf("--- CARTAS EN EL CENTRO (RIVER) ---\n[");
-    imprimirCarta(river[0]);
-    printf("] [");
-    imprimirCarta(river[1]);
-    printf("] [");
-    imprimirCarta(river[2]);
-    printf("]\n\n");
+if not preguntar_jugador(1):
+    print("\nEl Jugador 1 se rinde y el Jugador 2 GANA automáticamente")
+    exit()
+if not preguntar_jugador(2):
+    print("\nEl Jugador 2 se rinde y el Jugador 1 GANA automáticamente")
+    exit()
 
-    return 0; 
-}
+#ultima evaluacion
+print("\nResultados")
+#evaluamos las manos de los jugadores con las del centro
+nivel_p1, jugada_p1 = evaluar_mano(player1, centro)
+nivel_p2, jugada_p2 = evaluar_mano(player2, centro)
+
+print(f"Jugador 1 armó: {jugada_p1}")
+print(f"Jugador 2 armó: {jugada_p2}\n")
+
+if nivel_p1 > nivel_p2:
+    print("Ganó el jugador 1")
+elif nivel_p2 > nivel_p1:
+    print("Ganó el jugador 2")
+else:
+    print("GG, empate, nos echamos otra?:)")
